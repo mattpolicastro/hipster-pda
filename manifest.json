@@ -1,0 +1,10 @@
+{
+  "id": "inbox-triage",
+  "name": "Inbox Triage",
+  "version": "0.1.0",
+  "minAppVersion": "1.7.0",
+  "description": "Card-based GTD inbox capture and triage",
+  "author": "Matt Policastro",
+  "authorUrl": "https://mattpolicastro.com",
+  "isDesktopOnly": false
+}

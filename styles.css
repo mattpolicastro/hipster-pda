@@ -1,0 +1,40 @@
+.inbox-triage-container {
+	--it-bg: var(--background-primary);
+	--it-text: var(--text-normal);
+	--it-text-muted: var(--text-muted);
+	--it-accent: var(--interactive-accent);
+	--it-accent-hover: var(--interactive-accent-hover);
+	--it-border: var(--background-modifier-border);
+	--it-radius: var(--radius-m, 8px);
+	--it-spacing: var(--size-4-4, 16px);
+
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	padding: var(--it-spacing);
+	color: var(--it-text);
+	background: var(--it-bg);
+	font-family: var(--font-interface);
+}
+
+.inbox-triage-container h1 {
+	margin: 0 0 var(--size-4-2, 8px) 0;
+	font-size: var(--font-ui-large, 1.5rem);
+	font-weight: 600;
+	color: var(--it-text);
+}
+
+.inbox-triage-subtitle {
+	margin: 0 0 var(--it-spacing) 0;
+	font-size: var(--font-ui-medium, 1rem);
+	color: var(--it-accent);
+	font-weight: 500;
+}
+
+.inbox-triage-status {
+	margin: 0;
+	font-size: var(--font-ui-small, 0.875rem);
+	color: var(--it-text-muted);
+}
