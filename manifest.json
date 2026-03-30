@@ -1,6 +1,6 @@
 {
-  "id": "inbox-triage",
-  "name": "Inbox Triage",
+  "id": "hipster-pda",
+  "name": "Hipster PDA",
   "version": "0.1.0",
   "minAppVersion": "1.7.0",
   "description": "Card-based GTD inbox capture and triage",

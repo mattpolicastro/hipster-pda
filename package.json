@@ -1,5 +1,5 @@
 {
-  "name": "inbox-triage",
+  "name": "hipster-pda",
   "version": "0.1.0",
   "description": "Card-based GTD inbox capture and triage for Obsidian",
   "main": "main.js",
