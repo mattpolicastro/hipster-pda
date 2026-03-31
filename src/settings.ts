@@ -82,6 +82,49 @@ export class HipsterPdaSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName("Date format")
+			.setDesc("How to interpret numeric dates like 3/4. ISO (YYYY-MM-DD) is always supported.")
+			.addDropdown((dropdown) =>
+				dropdown
+					.addOption("us", "US (M/D/Y)")
+					.addOption("eu", "EU (D/M/Y)")
+					.addOption("iso", "ISO only")
+					.setValue(this.plugin.settings.dateFormat)
+					.onChange(async (value) => {
+						this.plugin.settings.dateFormat = value as "us" | "eu" | "iso";
+						await this.plugin.saveSettings();
+					})
+			);
+
+		containerEl.createEl("h3", { text: "Tasks plugin" });
+
+		new Setting(containerEl)
+			.setName("Priority")
+			.setDesc("Add a priority step when processing actionable items (⏫🔼🔽⏬)")
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableTasksPriority)
+					.onChange(async (value) => {
+						this.plugin.settings.enableTasksPriority = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Recurrence")
+			.setDesc('Add a recurrence step when processing actionable items (🔁 every …)')
+			.addToggle((toggle) =>
+				toggle
+					.setValue(this.plugin.settings.enableTasksRecurrence)
+					.onChange(async (value) => {
+						this.plugin.settings.enableTasksRecurrence = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		containerEl.createEl("h3", { text: "Appearance" });
+
+		new Setting(containerEl)
 			.setName("Animation duration")
 			.setDesc("Card transition duration in milliseconds (100–500)")
 			.addSlider((slider) =>

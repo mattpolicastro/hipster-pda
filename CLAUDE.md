@@ -24,7 +24,7 @@ Output files (`main.js`, `manifest.json`, `styles.css`) live in the project root
 
 ```bash
 # Symlink:
-# {vault}/.obsidian/plugins/hipster-pda/ -> ~/Projects/inbox-triage/
+# {vault}/.obsidian/plugins/hipster-pda/ -> ~/Projects/hipster-pda/
 ```
 
 After `npm run dev`, reload Obsidian (Cmd+R) or use the Hot Reload plugin to pick up changes.

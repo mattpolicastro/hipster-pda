@@ -40,7 +40,7 @@
 }
 
 .hipster-pda-status {
-	margin: 0;
+	margin: var(--size-4-4, 16px) 0 0;
 	font-size: var(--font-ui-small, 0.875rem);
 	color: var(--it-text-muted);
 }
@@ -250,11 +250,12 @@
 /* === Process Mode === */
 
 .process-mode {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
 	width: 100%;
+	min-height: 100%;
 }
 
 .process-card-wrapper {
@@ -262,6 +263,8 @@
 	flex-direction: column;
 	align-items: center;
 	width: 100%;
+	margin-top: auto;
+	margin-bottom: auto;
 }
 
 
@@ -648,6 +651,10 @@
 	color: var(--text-error);
 }
 
+.ref-btn-full {
+	width: 100%;
+}
+
 /* === GTD Flow === */
 
 .gtd-choices {
@@ -711,6 +718,54 @@
 .hipster-pda-container input.gtd-text-input:focus {
 	border-bottom-color: var(--it-accent);
 	box-shadow: none;
+}
+
+/* === Outcome Banner === */
+
+.process-outcome-anchor {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	z-index: 10;
+}
+
+.process-outcome-card {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-1, 4px);
+	width: 100%;
+	max-width: var(--it-card-width);
+	padding: var(--size-4-4, 16px) var(--size-4-6, 24px);
+	background: var(--it-bg-secondary);
+	border: 1px solid var(--it-border);
+	border-radius: var(--it-radius);
+	box-shadow: var(--it-card-shadow);
+	animation: fade-up 200ms ease-out;
+	opacity: 0.75;
+	text-align: center;
+	color: var(--it-text-muted);
+	font-size: var(--font-ui-small, 0.85rem);
+}
+
+.process-outcome-check {
+	font-size: 1.4rem;
+	line-height: 1;
+	color: var(--color-green, #4caf50);
+}
+
+.process-outcome-text {
+	word-break: break-word;
+}
+
+.process-outcome-undo {
+	color: var(--it-accent);
+	font-weight: var(--font-semibold, 600);
+	cursor: pointer;
 }
 
 /* === Navigation Links === */
@@ -796,6 +851,37 @@
 }
 
 /* === Tag Quick Picks === */
+
+.priority-picks {
+	display: flex;
+	flex-direction: column;
+	gap: var(--size-4-1, 4px);
+	width: 100%;
+}
+
+.priority-pick {
+	display: flex;
+	align-items: center;
+	gap: var(--size-4-2, 8px);
+	padding: var(--size-4-2, 8px) var(--size-4-3, 12px);
+	border: 1px solid var(--it-border);
+	border-radius: var(--it-radius);
+	background: none;
+	color: var(--it-text);
+	cursor: pointer;
+	font: inherit;
+	font-size: var(--font-ui-small, 0.85rem);
+	transition: border-color 150ms ease;
+}
+
+.priority-pick:hover {
+	border-color: var(--it-text-muted);
+}
+
+.priority-pick-active {
+	border-color: var(--it-accent);
+	background: var(--it-bg-secondary);
+}
 
 .tag-quick-picks {
 	display: flex;

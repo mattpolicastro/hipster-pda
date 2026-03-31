@@ -1,4 +1,4 @@
-# Inbox Triage — Work Log
+# Hipster PDA — Work Log
 
 ## 2026-03-29
 

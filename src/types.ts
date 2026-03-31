@@ -1,3 +1,6 @@
+export type DateFormatLocale = "us" | "eu" | "iso";
+export type TasksPriority = "highest" | "high" | "medium" | "low" | "lowest" | null;
+
 export interface HipsterPdaSettings {
 	inboxPath: string;
 	somedayPath: string;
@@ -5,6 +8,9 @@ export interface HipsterPdaSettings {
 	contextTags: string[];
 	showSourceInfo: boolean;
 	animationDuration: number;
+	dateFormat: DateFormatLocale;
+	enableTasksPriority: boolean;
+	enableTasksRecurrence: boolean;
 }
 
 export const DEFAULT_SETTINGS: HipsterPdaSettings = {
@@ -14,6 +20,9 @@ export const DEFAULT_SETTINGS: HipsterPdaSettings = {
 	contextTags: ["#home", "#work", "#computer", "#errands", "#phone"],
 	showSourceInfo: true,
 	animationDuration: 250,
+	dateFormat: "us",
+	enableTasksPriority: false,
+	enableTasksRecurrence: false,
 };
 
 export interface InboxItem {
@@ -25,7 +34,7 @@ export interface InboxItem {
 }
 
 export type Disposition =
-	| { type: "actionable"; destination: string; tags: string[]; dueDate?: string; nextActions?: string[] }
+	| { type: "actionable"; destination: string; tags: string[]; dueDate?: string; nextActions?: string[]; priority?: TasksPriority; recurrence?: string }
 	| { type: "delegate"; destination: string; waitingOn: string }
 	| { type: "project"; destination: string; nextAction: string }
 	| { type: "reference"; destination: string }

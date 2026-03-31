@@ -4,22 +4,54 @@ import type {
 	ObsidianBridge,
 	ProcessedItem,
 	Disposition,
+	TasksPriority,
 } from "./types";
 import { parseFuzzyDate, formatDate } from "./dateParser";
 
 type Phase =
 	| "swipe"
 	| "act-2min" | "act-delegate" | "act-delegate-note"
-	| "act-scope" | "act-next" | "act-due" | "act-tags" | "act-dest"
+	| "act-scope" | "act-next" | "act-due" | "act-priority" | "act-recurrence" | "act-tags" | "act-dest"
 	| "act-project-next" | "act-project-dest"
 	| "not-actionable"
 	| "done";
+
+const PRIORITY_OPTIONS: { value: TasksPriority; label: string; emoji: string; key: string }[] = [
+	{ value: "highest", label: "Highest", emoji: "⏫", key: "1" },
+	{ value: "high", label: "High", emoji: "🔼", key: "2" },
+	{ value: "medium", label: "Medium", emoji: "", key: "3" },
+	{ value: "low", label: "Low", emoji: "🔽", key: "4" },
+	{ value: "lowest", label: "Lowest", emoji: "⏬", key: "5" },
+];
 
 interface ProcessModeProps {
 	bridge: ObsidianBridge;
 	items: InboxItem[];
 	startIndex?: number;
 	onExit: (processedCount: number) => void;
+}
+
+function summarizeOutcome(entry: ProcessedItem): string {
+	const name = entry.item.text.length > 40
+		? entry.item.text.slice(0, 40) + "…"
+		: entry.item.text;
+	const disp = entry.disposition;
+	switch (disp.type) {
+		case "actionable":
+			return `"${name}" → ${disp.destination}`;
+		case "reference":
+			return `"${name}" → ${disp.destination}`;
+		case "delegate":
+			return `"${name}" → ${disp.destination} (waiting)`;
+		case "project":
+			return `"${name}" → ${disp.destination}`;
+		case "someday":
+			return `"${name}" → Someday/Maybe`;
+		case "trash":
+			return `"${name}" → Trashed`;
+		case "done-now":
+			return `"${name}" → Done`;
+	}
 }
 
 export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessModeProps) {
@@ -36,10 +68,19 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 	const [waitingOnInput, setWaitingOnInput] = useState("");
 	const [nextActionInput, setNextActionInput] = useState("");
 	const [nextActions, setNextActions] = useState<string[]>([]);
+	const [priority, setPriority] = useState<TasksPriority>(null);
+	const [recurrenceInput, setRecurrenceInput] = useState("");
 
 	const settings = bridge.getSettings();
 	const currentItem = reversedItems[currentIndex] ?? null;
-	const parsedDue = useMemo(() => parseFuzzyDate(dueInput), [dueInput]);
+	const parsedDue = useMemo(() => parseFuzzyDate(dueInput, settings.dateFormat), [dueInput, settings.dateFormat]);
+
+	// Dynamic phase chain: due → [priority] → [recurrence] → tags
+	const phaseAfterDue: Phase = settings.enableTasksPriority ? "act-priority"
+		: settings.enableTasksRecurrence ? "act-recurrence" : "act-tags";
+	const phaseAfterPriority: Phase = settings.enableTasksRecurrence ? "act-recurrence" : "act-tags";
+	const phaseBeforeTags: Phase = settings.enableTasksRecurrence ? "act-recurrence"
+		: settings.enableTasksPriority ? "act-priority" : "act-due";
 
 	const resetSubRouting = useCallback(() => {
 		setSelectedTags([]);
@@ -48,6 +89,8 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 		setWaitingOnInput("");
 		setNextActionInput("");
 		setNextActions([]);
+		setPriority(null);
+		setRecurrenceInput("");
 	}, []);
 
 	// --- Card advancement ---
@@ -63,18 +106,17 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 				return; // Don't advance — item stays in inbox
 			}
 
+			// Remove from inbox immediately (except done-now, which is checked off in place)
+			if (disposition.type !== "done-now") {
+				await bridge.removeProcessedFromInbox([currentItem]);
+			}
+
 			const entry: ProcessedItem = { item: currentItem, disposition };
 			const newProcessed = [...processed, entry];
 			setProcessed(newProcessed);
 
 			const nextIndex = currentIndex + 1;
 			if (nextIndex >= reversedItems.length) {
-				const toRemove = newProcessed
-					.filter((p) => p.disposition.type !== "done-now")
-					.map((p) => p.item);
-				if (toRemove.length > 0) {
-					await bridge.removeProcessedFromInbox(toRemove);
-				}
 				onExit(newProcessed.length);
 			} else {
 				setCurrentIndex(nextIndex);
@@ -101,9 +143,6 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 
 		const nextIndex = currentIndex + 1;
 		if (nextIndex >= reversedItems.length) {
-			await bridge.removeProcessedFromInbox(
-				newProcessed.filter((p) => p.disposition.type !== "done-now").map((p) => p.item)
-			);
 			onExit(newProcessed.length);
 		} else {
 			setCurrentIndex(nextIndex);
@@ -142,12 +181,14 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 					tags: selectedTags,
 					dueDate: parsedDue ? formatDate(parsedDue) : undefined,
 					nextActions: nextActions.length > 0 ? nextActions : undefined,
+					priority: priority,
+					recurrence: recurrenceInput.trim() || undefined,
 				});
 			} else {
 				setPhase("act-tags");
 			}
 		});
-	}, [bridge, selectedTags, parsedDue, nextActions, advanceCard]);
+	}, [bridge, selectedTags, parsedDue, nextActions, priority, recurrenceInput, advanceCard]);
 
 	const handleConfirmProject = useCallback(() => {
 		if (!nextActionInput.trim()) return;
@@ -207,8 +248,11 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 
 		if (disp.type === "actionable") {
 			const tags = disp.tags.length > 0 ? " " + disp.tags.join(" ") : "";
+			const priorityEmoji: Record<string, string> = { highest: " ⏫", high: " 🔼", low: " 🔽", lowest: " ⏬" };
+			const pri = disp.priority ? (priorityEmoji[disp.priority] ?? "") : "";
+			const rec = disp.recurrence ? ` 🔁 ${disp.recurrence}` : "";
 			const due = disp.dueDate ? ` 📅 ${disp.dueDate}` : "";
-			await bridge.removeLineFromFile(disp.destination, `- [ ] ${last.item.text}${tags}${due}`);
+			await bridge.removeLineFromFile(disp.destination, `- [ ] ${last.item.text}${tags}${pri}${rec}${due}`);
 			if (disp.nextActions) {
 				for (const action of disp.nextActions) {
 					await bridge.removeLineFromFile(disp.destination, `\t- [ ] ${action}`);
@@ -224,6 +268,11 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 			await bridge.removeLineFromFile(settings.somedayPath, `- [ ] ${last.item.text} #someday`);
 		} else if (disp.type === "done-now") {
 			await bridge.unmarkItemDone(last.item);
+		}
+
+		// Re-add item to inbox (except done-now, which was checked off in place)
+		if (disp.type !== "done-now") {
+			await bridge.writeItemsToInbox([last.item]);
 		}
 
 		setProcessed(processed.slice(0, -1));
@@ -301,8 +350,18 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 				case "act-due":
 					if (e.key === "Escape") setPhase("act-next");
 					break;
-				case "act-tags":
+				case "act-priority":
 					if (e.key === "Escape") setPhase("act-due");
+					else if (!inInput) {
+						const opt = PRIORITY_OPTIONS.find((o) => o.key === e.key);
+						if (opt) { setPriority(opt.value === "medium" ? null : opt.value); setPhase(phaseAfterPriority); }
+					}
+					break;
+				case "act-recurrence":
+					if (e.key === "Escape") setPhase(settings.enableTasksPriority ? "act-priority" : "act-due");
+					break;
+				case "act-tags":
+					if (e.key === "Escape") setPhase(phaseBeforeTags);
 					break;
 				case "act-dest":
 					if (e.key === "Escape") setPhase("act-tags");
@@ -315,9 +374,9 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 					break;
 				case "not-actionable":
 					if (e.key === "Escape") { setPhase("swipe"); resetSubRouting(); }
-					else if (e.key === "1") handleNotActionable("trash");
-					else if (e.key === "2") handleNotActionable("reference");
-					else if (e.key === "3") handleNotActionable("someday");
+					else if (e.key === "ArrowRight") handleNotActionable("reference");
+					else if (e.key === "ArrowLeft") handleNotActionable("someday");
+					else if (e.key === "ArrowDown") { e.preventDefault(); handleNotActionable("trash"); }
 					break;
 			}
 		};
@@ -345,11 +404,21 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 		},
 		"act-due": {
 			back: () => setPhase("act-next"),
-			next: dueInput.trim() ? () => setPhase("act-tags") : () => { setDueInput(""); setPhase("act-tags"); },
+			next: dueInput.trim() ? () => setPhase(phaseAfterDue) : () => { setDueInput(""); setPhase(phaseAfterDue); },
 			nextLabel: dueInput.trim() ? "Next →" : "Skip →",
 		},
-		"act-tags": {
+		"act-priority": {
 			back: () => setPhase("act-due"),
+			next: () => setPhase(phaseAfterPriority),
+			nextLabel: "Skip →",
+		},
+		"act-recurrence": {
+			back: () => setPhase(settings.enableTasksPriority ? "act-priority" : "act-due"),
+			next: recurrenceInput.trim() ? () => setPhase("act-tags") : () => { setRecurrenceInput(""); setPhase("act-tags"); },
+			nextLabel: recurrenceInput.trim() ? "Next →" : "Skip →",
+		},
+		"act-tags": {
+			back: () => setPhase(phaseBeforeTags),
 			next: handleAdvanceToDest,
 			nextLabel: "File it away →",
 		},
@@ -372,13 +441,29 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 
 	const nav = phaseNav[phase] ?? {};
 
+	const lastProcessed = processed.length > 0 ? processed[processed.length - 1] : null;
+
 	return (
 		<div className="process-mode">
+			{lastProcessed && phase === "swipe" && (
+				<div className="process-outcome-anchor">
+					{phase === "swipe" && (
+						<p className="card-stack-hint card-stack-hint-above">
+							<a className="process-outcome-undo" onClick={handleUndo}>Undo</a>
+						</p>
+					)}
+					<div className="process-outcome-card">
+						<span className="process-outcome-check">&#x2713;</span>
+						<span className="process-outcome-text">
+							{summarizeOutcome(lastProcessed)}
+						</span>
+					</div>
+				</div>
+			)}
 			<div className="process-card-wrapper">
 					<div className="process-nav-bar">
 					<div className="process-nav-left">
 						{nav.back && <a className="nav-link" onClick={nav.back}>&larr; Back</a>}
-						{phase === "swipe" && processed.length > 0 && <a className="nav-link" onClick={handleUndo}>Undo</a>}
 					</div>
 					<div className="process-nav-right">
 						{nav.next && nav.nextLabel && <a className="nav-link" onClick={nav.next}>{nav.nextLabel}</a>}
@@ -442,7 +527,7 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 									value={dueInput}
 									onChange={(e) => setDueInput(e.target.value)}
 									onKeyDown={(e) => {
-										if (e.key === "Enter") { e.preventDefault(); setPhase("act-tags"); }
+										if (e.key === "Enter") { e.preventDefault(); setPhase(phaseAfterDue); }
 									}}
 									autoFocus
 								/>
@@ -456,6 +541,52 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 							<div className="process-card-details">
 								<span className="process-card-label">Due</span>
 								<div className="process-card-detail">📅 {formatDate(parsedDue)}</div>
+							</div>
+						) : null}
+
+						{/* Priority — show picker when on that phase, otherwise show value */}
+						{settings.enableTasksPriority && phase === "act-priority" ? (
+							<div className="process-card-details">
+								<span className="process-card-label">Priority</span>
+								<div className="priority-picks">
+									{PRIORITY_OPTIONS.map((opt) => (
+										<button
+											key={opt.value}
+											className={`priority-pick${priority === opt.value || (opt.value === "medium" && priority === null) ? " priority-pick-active" : ""}`}
+											onClick={() => { setPriority(opt.value === "medium" ? null : opt.value); setPhase(phaseAfterPriority); }}
+										>
+											<kbd>{opt.key}</kbd> {opt.emoji ? `${opt.emoji} ` : ""}{opt.label}
+										</button>
+									))}
+								</div>
+							</div>
+						) : settings.enableTasksPriority && priority ? (
+							<div className="process-card-details">
+								<span className="process-card-label">Priority</span>
+								<div className="process-card-detail">{PRIORITY_OPTIONS.find((o) => o.value === priority)?.emoji} {priority}</div>
+							</div>
+						) : null}
+
+						{/* Recurrence — show input when on that phase, otherwise show value */}
+						{settings.enableTasksRecurrence && phase === "act-recurrence" ? (
+							<div className="process-card-details">
+								<span className="process-card-label">Recurrence</span>
+								<input
+									type="text"
+									className="card-inline-input"
+									placeholder="e.g. 'every week', 'every 2 months' · Enter to skip"
+									value={recurrenceInput}
+									onChange={(e) => setRecurrenceInput(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter") { e.preventDefault(); setPhase("act-tags"); }
+									}}
+									autoFocus
+								/>
+							</div>
+						) : settings.enableTasksRecurrence && recurrenceInput.trim() ? (
+							<div className="process-card-details">
+								<span className="process-card-label">Recurrence</span>
+								<div className="process-card-detail">🔁 {recurrenceInput.trim()}</div>
 							</div>
 						) : null}
 
@@ -660,17 +791,17 @@ export function ProcessMode({ bridge, items, startIndex = 0, onExit }: ProcessMo
 			{phase === "not-actionable" && (
 				<div className="sub-routing">
 					<p className="sub-routing-label">What is it?</p>
-					<div className="ref-buttons">
-						<button className="ref-btn ref-btn-danger" onClick={() => handleNotActionable("trash")}>
-							<kbd>1</kbd> Trash
+					<div className="gtd-lr-choices">
+						<button className="gtd-lr-choice gtd-lr-left" onClick={() => handleNotActionable("someday")}>
+							<kbd>&larr;</kbd> Someday / Maybe
 						</button>
-						<button className="ref-btn" onClick={() => handleNotActionable("reference")}>
-							<kbd>2</kbd> Reference &mdash; file it
-						</button>
-						<button className="ref-btn" onClick={() => handleNotActionable("someday")}>
-							<kbd>3</kbd> Someday / Maybe
+						<button className="gtd-lr-choice gtd-lr-right" onClick={() => handleNotActionable("reference")}>
+							Reference &mdash; file it <kbd>&rarr;</kbd>
 						</button>
 					</div>
+					<button className="ref-btn ref-btn-danger ref-btn-full" onClick={() => handleNotActionable("trash")}>
+						<kbd>&darr;</kbd> Trash
+					</button>
 				</div>
 			)}
 			</div>

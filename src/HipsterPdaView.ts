@@ -63,19 +63,30 @@ class DestinationPickerModal extends SuggestModal<TFile | null> {
 
 	selectSuggestion(item: TFile | null, evt: MouseEvent | KeyboardEvent): void {
 		if (item === null) {
-			const name = this.inputEl.value.trim().replace(/[\\/:*?"<>|]/g, "");
-			if (!name) return;
-			const folder = this.folders[0];
-			const path = `${folder}/${name}.md`;
+			const raw = this.inputEl.value.trim().replace(/[*?"<>|]/g, "");
+			if (!raw) return;
+			// If the input already starts with a known folder, use it as-is
+			const startsWithFolder = this.folders.some(
+				(f) => raw.startsWith(f + "/")
+			);
+			const base = startsWithFolder ? raw : `${this.folders[0]}/${raw}`;
+			const path = base.endsWith(".md") ? base : `${base}.md`;
 			const existing = this.app.vault.getFileByPath(path);
 			if (existing) {
 				this.resolve(path);
 				this.close();
 			} else {
-				this.app.vault.create(path, "").then(() => {
-					this.resolve(path);
-					this.close();
-				});
+				ensureParentFolders(this.app, path)
+					.then(() => this.app.vault.create(path, ""))
+					.then(() => {
+						this.resolve(path);
+						this.close();
+					})
+					.catch((err) => {
+						console.error("[hipster-pda] Failed to create note:", err);
+						this.resolve(null);
+						this.close();
+					});
 			}
 			return;
 		}
@@ -90,6 +101,20 @@ class DestinationPickerModal extends SuggestModal<TFile | null> {
 	onClose(): void {
 		super.onClose();
 		this.resolve(null);
+	}
+}
+
+/**
+ * Ensure all ancestor folders for a path exist, creating them if needed.
+ */
+async function ensureParentFolders(app: App, filePath: string): Promise<void> {
+	const parts = filePath.split("/").slice(0, -1); // drop the filename
+	let current = "";
+	for (const part of parts) {
+		current = current ? `${current}/${part}` : part;
+		if (!app.vault.getAbstractFileByPath(current)) {
+			await app.vault.createFolder(current);
+		}
 	}
 }
 
@@ -158,7 +183,18 @@ export class HipsterPdaView extends ItemView {
 					const separator = content.endsWith("\n") ? "" : "\n";
 					await vault.modify(file, content + separator + serialized + "\n");
 				} else {
+					await ensureParentFolders(this.app, settings.inboxPath);
 					await vault.create(settings.inboxPath, serialized + "\n");
+				}
+				// Verify
+				const firstLine = serialized.split("\n")[0];
+				const verifyFile = vault.getFileByPath(settings.inboxPath);
+				if (!verifyFile) {
+					throw new Error(`Failed to write to inbox: file not found after write`);
+				}
+				const verifyContent = await vault.read(verifyFile);
+				if (!verifyContent.includes(firstLine)) {
+					throw new Error(`Failed to verify inbox write: content not found`);
 				}
 			},
 
@@ -179,7 +215,12 @@ export class HipsterPdaView extends ItemView {
 						const due = disposition.dueDate
 							? ` 📅 ${disposition.dueDate}`
 							: "";
-						line = `- [ ] ${item.text}${tags}${due}`;
+						const priorityEmoji: Record<string, string> = {
+							highest: " ⏫", high: " 🔼", low: " 🔽", lowest: " ⏬",
+						};
+						const pri = disposition.priority ? (priorityEmoji[disposition.priority] ?? "") : "";
+						const rec = disposition.recurrence ? ` 🔁 ${disposition.recurrence}` : "";
+						line = `- [ ] ${item.text}${tags}${pri}${rec}${due}`;
 						if (disposition.nextActions && disposition.nextActions.length > 0) {
 							const subs = disposition.nextActions
 								.map((a) => `\t- [ ] ${a}`)
@@ -234,6 +275,7 @@ export class HipsterPdaView extends ItemView {
 						await vault.modify(file, content + separator + SECTION_HEADING + "\n" + line + "\n");
 					}
 				} else {
+					await ensureParentFolders(this.app, destPath);
 					await vault.create(destPath, SECTION_HEADING + "\n" + line + "\n");
 				}
 
@@ -290,7 +332,12 @@ export class HipsterPdaView extends ItemView {
 					const path = `${folder}/${name}.md`;
 					const existing = vault.getFileByPath(path);
 					if (existing) return path;
+					await ensureParentFolders(this.app, path);
 					await vault.create(path, "");
+					const verify = vault.getFileByPath(path);
+					if (!verify) {
+						throw new Error(`Failed to create note at ${path}`);
+					}
 					return path;
 				},
 
