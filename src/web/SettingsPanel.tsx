@@ -36,14 +36,13 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
 	}, []);
 
 	return (
-		<div className="dest-picker-overlay" onClick={onClose}>
-			<div className="settings-panel" onClick={(e) => e.stopPropagation()}>
-				<div className="settings-header">
-					<h2>Settings</h2>
-					<button className="settings-close" onClick={onClose}>&times;</button>
-				</div>
+		<div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+			<div className="settings-header">
+				<h2>Settings</h2>
+				<button className="settings-close" onClick={onClose}>&times;</button>
+			</div>
 
-				<div className="settings-body">
+			<div className="settings-body">
 					<label className="settings-field">
 						<span className="settings-label">Inbox file path</span>
 						<input
@@ -144,7 +143,6 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
 							onChange={(e) => update({ enableTasksRecurrence: e.target.checked })}
 						/>
 					</label>
-				</div>
 			</div>
 		</div>
 	);

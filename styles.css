@@ -140,7 +140,7 @@
 	top: var(--size-4-8, 32px);
 	left: 50%;
 	transform: translateX(-50%);
-	width: calc(100% - var(--size-4-10, 40px) * 2);
+	width: 100%;
 	max-width: var(--it-card-width);
 	cursor: pointer;
 	z-index: 1;
@@ -810,7 +810,7 @@
 	bottom: var(--size-4-8, 32px);
 	left: 50%;
 	transform: translateX(-50%);
-	width: calc(100% - var(--size-4-10, 40px) * 2);
+	width: 100%;
 	max-width: var(--it-card-width);
 	cursor: pointer;
 	z-index: 1;
@@ -929,8 +929,14 @@
 	top: var(--size-4-3, 12px);
 	right: var(--size-4-3, 12px);
 	display: flex;
-	gap: var(--size-4-1, 4px);
+	flex-direction: column;
+	align-items: flex-end;
 	z-index: 100;
+}
+
+.web-toolbar-buttons {
+	display: flex;
+	gap: var(--size-4-1, 4px);
 }
 
 .web-toolbar-btn {
@@ -948,9 +954,16 @@
 	transition: color var(--it-transition), border-color var(--it-transition);
 }
 
-.web-toolbar-btn:hover {
+.web-toolbar-btn:hover,
+.web-toolbar-btn-active {
 	color: var(--it-text);
 	border-color: var(--it-text-muted);
+}
+
+.web-toolbar-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 99;
 }
 
 /* === Web App: Destination Picker === */
@@ -1026,16 +1039,17 @@
 /* === Web App: Settings / Export Panels === */
 
 .settings-panel {
-	width: 90%;
-	max-width: 480px;
-	max-height: 80vh;
+	width: 320px;
+	max-height: calc(100vh - 80px);
 	display: flex;
 	flex-direction: column;
 	background: var(--it-bg);
 	border: 1px solid var(--it-border);
 	border-radius: var(--it-radius);
-	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08);
 	overflow: hidden;
+	margin-top: var(--size-4-2, 8px);
+	animation: fade-in 150ms ease-out;
 }
 
 .settings-header {
