@@ -44,30 +44,28 @@ export function ExportImport({ onClose }: ExportImportProps) {
 	);
 
 	return (
-		<div className="dest-picker-overlay" onClick={onClose}>
-			<div className="settings-panel" onClick={(e) => e.stopPropagation()}>
-				<div className="settings-header">
-					<h2>Data</h2>
-					<button className="settings-close" onClick={onClose}>&times;</button>
-				</div>
-				<div className="settings-body">
-					<p className="settings-description">
-						Export your data as a JSON backup, or import a previous backup.
-					</p>
-					<button className="dump-btn-primary" onClick={handleExport} style={{ width: "100%", marginBottom: 8 }}>
-						Export data
-					</button>
-					<button className="dump-btn-secondary" onClick={handleImport} style={{ width: "100%" }}>
-						Import data
-					</button>
-					<input
-						ref={fileRef}
-						type="file"
-						accept=".json"
-						style={{ display: "none" }}
-						onChange={handleFileChange}
-					/>
-				</div>
+		<div className="settings-panel" onClick={(e) => e.stopPropagation()}>
+			<div className="settings-header">
+				<h2>Data</h2>
+				<button className="settings-close" onClick={onClose}>&times;</button>
+			</div>
+			<div className="settings-body">
+				<p className="settings-description">
+					Export your data as a JSON backup, or import a previous backup.
+				</p>
+				<button className="dump-btn-primary" onClick={handleExport} style={{ width: "100%", marginBottom: 8 }}>
+					Export data
+				</button>
+				<button className="dump-btn-secondary" onClick={handleImport} style={{ width: "100%" }}>
+					Import data
+				</button>
+				<input
+					ref={fileRef}
+					type="file"
+					accept=".json"
+					style={{ display: "none" }}
+					onChange={handleFileChange}
+				/>
 			</div>
 		</div>
 	);

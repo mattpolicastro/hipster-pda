@@ -8,18 +8,17 @@ import { ExportImport } from "./ExportImport";
 
 const bridge = createLocalStorageBridge();
 
+type PanelType = "settings" | "data" | null;
+
 export function WebApp() {
 	const [pickerRequest, setPickerRequest] = useState<PickerRequest | null>(null);
-	const [showSettings, setShowSettings] = useState(false);
-	const [showExport, setShowExport] = useState(false);
+	const [openPanel, setOpenPanel] = useState<PanelType>(null);
 
-	// Register the picker state setter so the bridge can trigger the modal
 	useEffect(() => {
 		setPickerStateSetter(setPickerRequest);
 		return () => setPickerStateSetter(() => {});
 	}, []);
 
-	// Set animation duration CSS variable
 	useEffect(() => {
 		const duration = bridge.getSettings().animationDuration;
 		document.documentElement.style.setProperty("--it-animation-duration", `${duration}ms`);
@@ -29,23 +28,38 @@ export function WebApp() {
 		setPickerRequest(null);
 	}, []);
 
+	const togglePanel = useCallback((panel: PanelType) => {
+		setOpenPanel((prev) => (prev === panel ? null : panel));
+	}, []);
+
+	const closePanel = useCallback(() => setOpenPanel(null), []);
+
 	return (
 		<>
+			{openPanel && (
+				<div className="web-toolbar-backdrop" onClick={closePanel} />
+			)}
+
 			<div className="web-toolbar">
-				<button
-					className="web-toolbar-btn"
-					onClick={() => setShowSettings(true)}
-					title="Settings"
-				>
-					&#x2699;
-				</button>
-				<button
-					className="web-toolbar-btn"
-					onClick={() => setShowExport(true)}
-					title="Export / Import"
-				>
-					&#x21C5;
-				</button>
+				<div className="web-toolbar-buttons">
+					<button
+						className={`web-toolbar-btn${openPanel === "settings" ? " web-toolbar-btn-active" : ""}`}
+						onClick={() => togglePanel("settings")}
+						title="Settings"
+					>
+						&#x2699;
+					</button>
+					<button
+						className={`web-toolbar-btn${openPanel === "data" ? " web-toolbar-btn-active" : ""}`}
+						onClick={() => togglePanel("data")}
+						title="Export / Import"
+					>
+						&#x21C5;
+					</button>
+				</div>
+
+				{openPanel === "settings" && <SettingsPanel onClose={closePanel} />}
+				{openPanel === "data" && <ExportImport onClose={closePanel} />}
 			</div>
 
 			<HipsterPdaApp bridge={bridge} />
@@ -53,8 +67,6 @@ export function WebApp() {
 			{pickerRequest && (
 				<DestinationPicker request={pickerRequest} onDone={handlePickerDone} />
 			)}
-			{showSettings && <SettingsPanel onClose={() => setShowSettings(false)} />}
-			{showExport && <ExportImport onClose={() => setShowExport(false)} />}
 		</>
 	);
 }
