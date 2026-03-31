@@ -1,5 +1,12 @@
 /* === Base === */
 
+.hipster-pda-container,
+.hipster-pda-container *,
+.hipster-pda-container *::before,
+.hipster-pda-container *::after {
+	box-sizing: border-box;
+}
+
 .hipster-pda-container {
 	--it-bg: var(--background-primary, #ffffff);
 	--it-bg-secondary: var(--background-secondary, #f8f9fa);
