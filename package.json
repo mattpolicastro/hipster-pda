@@ -7,7 +7,8 @@
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production",
     "dev:web": "vite",
-    "build:web": "vite build"
+    "build:web": "vite build",
+    "postbuild": "node scripts/install-to-vault.mjs"
   },
   "keywords": [
     "obsidian",
